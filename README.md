@@ -14,5 +14,5 @@
 Login to a jupyter notebook instance, and run:
 
 ```bash
-nextflow run https://github.com/olivierlabayle/aou-gwas -c config/run.config -profile gcb -process.container="${ARTIFACT_REGISTRY_DOCKER_REPO}/olivierlabayle/aou-gwas:main"
+wb nextflow run main.nf -c config/run.config -profile google-batch -process.container="${ARTIFACT_REGISTRY_DOCKER_REPO}/olivierlabayle/aou-gwas:main"
 ```
