@@ -11,9 +11,9 @@ process ExtractPhenotypes {
     script: 
         """
         python /opt/aou-gwas/bin/extract_phenotypes.py \
-            --ancestry_filepath ${ancestry_file} \
-            --db_name ${params.DB_NAME} \
-            --days_threshold ${params.N_DAYS_THRESHOLD}
+            ${ancestry_file} \
+            ${params.DB_NAME} \
+            -d ${params.N_DAYS_THRESHOLD}
         """
 }
 
