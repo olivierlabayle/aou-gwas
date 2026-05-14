@@ -1,4 +1,7 @@
 process ExtractPhenotypes {
+    cpus 2
+    memory '15 GB'
+
     input:
         path ancestry_file
 
