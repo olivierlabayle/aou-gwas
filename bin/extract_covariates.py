@@ -1,6 +1,7 @@
 import pandas
 import pandas_gbq
 import os
+import argparse
 
 def sex_is_concordant(sab, gender):
     if sab == "Male" and gender == "Man":
@@ -34,7 +35,7 @@ def load_person_df(db_name):
     """
     person_df = load_query(f"""
     SELECT
-        id AS PERSON_ID,
+        id AS person_id,
         DATE_DIFF(CURRENT_DATE(), CAST(date_of_birth AS DATE), YEAR) AS AGE,
         T_DISP_sex_at_birth AS SEX_AT_BIRTH,
         T_DISP_gender AS GENDER
@@ -42,7 +43,7 @@ def load_person_df(db_name):
     WHERE has_ehr_data = true
     """)
     person_df["SEX_IS_CONCORDANT"] = [sex_is_concordant(sab, gender) for sab, gender in zip(person_df.SEX_AT_BIRTH, person_df.GENDER)]
-    person_df = person_df[person_df["SEX_IS_CONCORDANT"]][["PERSON_ID",	"AGE", "SEX_AT_BIRTH"]]
+    person_df = person_df[person_df["SEX_IS_CONCORDANT"]][["person_id", "AGE", "SEX_AT_BIRTH"]]
     person_df["SEX_AT_BIRTH"] = [1 if x == "Male" else 0 for x in person_df["SEX_AT_BIRTH"]]
     return person_df
 
@@ -138,10 +139,9 @@ def find_overlap_between_conditions_and_severe_events(conditions_df, severity_so
     return merged_df.groupby(["person_id", "condition"], as_index=False)["age_at_occurrence"].min()
 
 
-def main():
+def main(ancestry_filepath, db_name, days_threshold=7):
     # Hardcode variables for now but these could be easily converted to command line arguments or config variables in the future.
-    db_name = "`wb-silky-artichoke-2408.C2024Q3R8_index_111825`"
-    days_threshold = 7
+    db_name = f"`{db_name}`"
     conditions_of_interest = {"4266367": "INFLUENZA", "4120302": "GROUP_A_STREPTOCOCCAL_INFECTION", "4192640": "PANCREATITIS", "255848": "PNEUMONIA"}
     severe_procedure_concept_ids = {"4145647": "Assisted breathing", "40487536": "Intubation of respiratory tract", "4013354": "Insertion of endotracheal tube", "4230167": "Artificial respiration", "44783799": "Exteriorization of trachea"}
     severe_conditions_concept_ids = {"132797": "Sepsis"}
@@ -159,7 +159,7 @@ def main():
     severe_events_from_visits_df = get_severe_events_from_visits(db_name, severe_visit_concept_ids=list(severe_visit_concept_ids.keys()))
     
     # Load the conditions of interest which will be used to determine the infection and the timing of the infection relative to the severe event.
-    print("Loading conditions of interest: ", conditions_of_interest.values())
+    print("Loading conditions of interest: ", ", ".join(conditions_of_interest.values()))
     conditions_of_interest_df = get_conditions_of_interest_events(db_name, conditions_of_interest=conditions_of_interest)
     
     # For each source of severe events, find the conditions of interest that occur within a certain time threshold of the severe event and record the minimum age at occurrence for each condition of interest for each individual.
@@ -193,14 +193,26 @@ def main():
     severe_individuals_without_conditions_of_interest = all_severe_individuals - severe_individuals_with_conditions_of_interest
     person_df = person_df[~person_df["person_id"].isin(severe_individuals_without_conditions_of_interest)]
 
+    # Load and merge ancestries
+    print("Loading and merging ancestries.")
+    ancestries_df = pandas.read_csv(ancestry_filepath, sep="\t")
+    ancestries_df.rename(columns={"research_id": "person_id", "ancestry_pred": "SUPERPOPULATION"}, inplace=True)
+    person_df = pandas.merge(person_df, ancestries_df[["person_id", "SUPERPOPULATION"]], on="person_id", how="inner")
+    person_df["SUPERPOPULATION"] = person_df["SUPERPOPULATION"].str.upper()
+
     # Save the covariates dataset
     print("Saving covariates dataset.")
     person_df.insert(0, "FID", person_df["person_id"])
     person_df.rename(columns={"person_id": "IID"}, inplace=True)
-    person_df.to_csv("covariates.csv", index=False, sep="\t", na_rep="NA")
+    person_df.to_csv("covariates.tsv", index=False, sep="\t", na_rep="NA")
 
     print("Done.")
     return 0
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('ancestry_filepath', type=str, help="Filepath to the ancestry predictions tsv file.")
+    parser.add_argument('db_name', type=str, help="Name of the database to connect to.")
+    parser.add_argument("--days_threshold", "-d", type=int, default=7, help="The number of days within which a condition of interest must occur relative to a severe event to be considered severe.")
+    args = parser.parse_args()
+    main(args.ancestry_filepath, args.db_name, days_threshold=args.days_threshold)
