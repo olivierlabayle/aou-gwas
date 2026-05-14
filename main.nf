@@ -1,6 +1,6 @@
 process ExtractPhenotypes {
     cpus 2
-    memory '15 GB'
+    memory '12 GB'
 
     input:
         path ancestry_file
@@ -10,7 +10,7 @@ process ExtractPhenotypes {
 
     script: 
         """
-        ./bin/extract_phenotypes.py \
+        python /opt/aou-gwas/bin/extract_phenotypes.py \
             --ancestry_filepath ${ancestry_file} \
             --db_name ${params.DB_NAME} \
             --days_threshold ${params.N_DAYS_THRESHOLD}
