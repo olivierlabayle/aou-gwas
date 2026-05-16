@@ -205,6 +205,7 @@ def main(ancestry_filepath, db_name, days_threshold=7):
     person_df.insert(0, "FID", person_df["person_id"])
     person_df.rename(columns={"person_id": "IID"}, inplace=True)
     person_df.to_csv("covariates.tsv", index=False, sep="\t", na_rep="NA")
+    person_df.to_csv("iids.txt", index=False, header=False, columns=["IID"])
 
     print("Done.")
     return 0
