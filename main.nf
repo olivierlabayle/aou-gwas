@@ -94,7 +94,7 @@ workflow {
         ancestry_file = file(params.ANCESTRY_FILEPATH)
         phenotypes_ch = ExtractPhenotypes(ancestry_file)
         //  QC the PGEN files
-        pgen_ch = channel.of(params.PGEN_FILES)
+        pgen_ch = channel.fromPath(params.PGEN_FILES)
             .flatMap { csv -> csv.splitCsv() }
             .map { row ->
                 record(chr: row[0], pgen: file(row[1]), pvar: file(row[2]), psam: file(row[3]))
