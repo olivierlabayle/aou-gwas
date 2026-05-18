@@ -103,7 +103,7 @@ workflow {
         QCPGENFile(pgen_ch, phenotypes_ch.iids)
 
         //QC BED files
-        bed_file = channel.fromPath(params.BED_PREFIX).collect()
+        bed_file = channel.fromPath("${params.BED_PREFIX}*").collect()
         QCBEDFile(bed_file, phenotypes_ch.iids)
 }
 
