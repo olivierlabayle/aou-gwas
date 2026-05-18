@@ -99,19 +99,17 @@ workflow {
             .map { row ->
                 record(chr: row[0], pgen: file(row[1]), pvar: file(row[2]), psam: file(row[3]))
             }
+            .view()
         QCPGENFile(pgen_ch, phenotypes_ch.iids)
 
         //QC BED files
         bed_file = channel.fromPath(params.BED_PREFIX).collect()
         QCBEDFile(bed_file, phenotypes_ch.iids)
-
-    publish:
-        phenotypes_ch
 }
 
-output {
-    phenotypes_ch {
-        path { f -> "covariates/{f.name}" }
-        mode 'copy'
-    }
-}
+// output {
+//     phenotypes_ch {
+//         path { f -> "covariates/{f.name}" }
+//         mode 'copy'
+//     }
+// }
