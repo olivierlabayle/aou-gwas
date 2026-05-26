@@ -2,7 +2,7 @@ FROM debian:trixie
 
 RUN apt-get clean \
     && apt-get update \
-    && apt-get install -y curl wget
+    && apt-get install -y curl wget unzip
 
 # Install PLINK2
 RUN wget https://s3.amazonaws.com/plink2-assets/alpha6/plink2_linux_x86_64_20250129.zip \
