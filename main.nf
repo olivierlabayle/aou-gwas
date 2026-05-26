@@ -96,16 +96,15 @@ workflow {
         // Create the covariates dataset
         ancestry_file = file(params.ANCESTRY_FILEPATH)
         phenotypes_ch = ExtractPhenotypes(ancestry_file)
-        //  QC the PGEN files
+        // QC the PGEN files
         pgen_ch = channel.fromPath(params.PGEN_FILES)
             .flatMap { csv -> csv.splitCsv() }
             .map { row ->
                 record(chr: row[0], pgen: file(row[1]), pvar: file(row[2]), psam: file(row[3]))
             }
-            .view()
         qced_pgen_ch = QCPGENFile(pgen_ch, phenotypes_ch.iids)
 
-        //QC BED files
+        // QC BED files
         bed_file = channel.fromPath("${params.BED_PREFIX}*").collect()
         qced_bed_files = QCBEDFile(bed_file, phenotypes_ch.iids)
 
