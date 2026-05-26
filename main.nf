@@ -12,6 +12,7 @@ process ExtractPhenotypes {
 
     script: 
         """
+        uv run python -c "import pandas; print('toto')"
         uv run python /opt/aou-gwas/bin/extract_covariates.py \
             ${ancestry_file} \
             ${params.DB_NAME} \
