@@ -1,6 +1,7 @@
 process ExtractPhenotypes {
     cpus 2
     memory '12 GB'
+    label 'containerized'
 
     input:
         path ancestry_file
@@ -21,6 +22,7 @@ process ExtractPhenotypes {
 process QCPGENFile {
     cpus 8
     memory '16 GB'
+    label 'containerized'
 
     input:
         tuple val(chr), path(pgen_file), path(pvar_file), path(psam_file)
@@ -58,6 +60,7 @@ process QCPGENFile {
 process QCBEDFile {
     cpus 8
     memory '16 GB'
+    label 'containerized'
 
     input:
         tuple path(bed_file), path(bim_file), path(fam_file)
@@ -100,16 +103,26 @@ workflow {
                 record(chr: row[0], pgen: file(row[1]), pvar: file(row[2]), psam: file(row[3]))
             }
             .view()
-        QCPGENFile(pgen_ch, phenotypes_ch.iids)
+        qced_pgen_ch = QCPGENFile(pgen_ch, phenotypes_ch.iids)
 
         //QC BED files
         bed_file = channel.fromPath("${params.BED_PREFIX}*").collect()
-        QCBEDFile(bed_file, phenotypes_ch.iids)
+        qced_bed_files = QCBEDFile(bed_file, phenotypes_ch.iids)
+
+    publish:
+        covariates = phenotypes_ch.covariates
+        qced_pgen  = qced_pgen_ch
+        qced_bed   = qced_bed_files
 }
 
-// output {
-//     phenotypes_ch {
-//         path { f -> "covariates/{f.name}" }
-//         mode 'copy'
-//     }
-// }
+output {
+    covariates {
+        path 'covariates'
+    }
+    qced_pgen {
+        path 'imputed_genotypes'
+    }
+    qced_bed {
+        path 'array_genotypes'
+    }
+}
