@@ -183,7 +183,7 @@ def main(ancestry_filepath, db_name, days_threshold=7):
 
     # Extract the first age of occurence of any severe condition (otherwise AGE would depend on the condition which would require different covariate datasets for each condition)
     print("Extracting age at occurrence for severe conditions.")
-    severe_person_age_at_occurence = severe_conditions_df.groupby("person_id").min("age_at_occurence").to_dict()['age_at_occurrence']
+    severe_person_age_at_occurence = severe_conditions_df.groupby("person_id")["age_at_occurrence"].min().to_dict()
     person_df["AGE"] = [severe_person_age_at_occurence[pid] if pid in severe_person_age_at_occurence else age for pid, age in zip(person_df["person_id"], person_df["AGE"])]
 
     # Remove severe individuals that do not have one of the desired conditions to avoid contamination of the control group
