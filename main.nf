@@ -41,7 +41,7 @@ process QCPGENFile {
             --min-alleles 2 \
             --keep ${sample_ids} \
             --snps-only \
-            --set-all-var-ids @:#:\\$r:\\$a \
+            --set-all-var-ids @:#:\\\$r:\\\$a \
             --make-pgen \
             --out ${output_prefix}
         # Add a FID column to the psam file which is required for downstream analyses.
