@@ -12,7 +12,7 @@ process ExtractPhenotypes {
 
     script: 
         """
-        python /opt/aou-gwas/bin/extract_phenotypes.py \
+        uv run /opt/aou-gwas/bin/extract_phenotypes.py \
             ${ancestry_file} \
             ${params.DB_NAME} \
             -d ${params.N_DAYS_THRESHOLD}
