@@ -45,13 +45,13 @@ process QCPGENFile {
             --make-pgen \
             --out ${output_prefix}
         # Add a FID column to the psam file which is required for downstream analyses.
-        awk 'BEGIN {OFS="\t"}
+        awk 'BEGIN {OFS="\\t"}
             NR==1 {
-                print "#FID", "IID", $2
+                print "#FID", "IID", \$2
                 next
             }
             {
-                print $1, $1, $2
+                print \$1, \$1, \$2
             }' ${output_prefix}.psam > ${output_prefix}.temp.psam
         mv ${output_prefix}.temp.psam ${output_prefix}.psam
         """
@@ -82,9 +82,9 @@ process QCBEDFile {
             --make-bed \
             --out ${output_prefix}
         # Add a FID column to the fam file which is required for downstream analyses.
-        awk 'BEGIN {OFS="\t"}
+        awk 'BEGIN {OFS="\\t"}
             {
-                $1 = $2
+                \$1 = \$2
                 print
             }' ${output_prefix}.fam > ${output_prefix}.temp.fam
         mv ${output_prefix}.temp.fam ${output_prefix}.fam
