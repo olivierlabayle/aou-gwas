@@ -11,6 +11,18 @@ def sex_is_concordant(sab, gender):
     else:
         return False
 
+def finalise_phenotype(iid, cond, severe_individuals):
+    """
+    cond is either 1 or NaN. 
+    If the individual is a case we keep the assignement.
+    If the individual is critically ill we return a missing value not to contaminate the control group, i.e. we return cond (which is NaN)
+    Otherwise we return 0
+    """
+    if cond == 1 or iid in severe_individuals:
+        return cond
+    else:
+        return 0
+
 def load_query(query):
     try:
         df = pandas_gbq.read_gbq(
@@ -143,9 +155,29 @@ def main(ancestry_filepath, db_name, days_threshold=7):
     # Hardcode variables for now but these could be easily converted to command line arguments or config variables in the future.
     db_name = f"`{db_name}`"
     conditions_of_interest = {"4266367": "INFLUENZA", "4120302": "GROUP_A_STREPTOCOCCAL_INFECTION", "4192640": "PANCREATITIS", "255848": "PNEUMONIA"}
-    severe_procedure_concept_ids = {"4145647": "Assisted breathing", "40487536": "Intubation of respiratory tract", "4013354": "Insertion of endotracheal tube", "4230167": "Artificial respiration", "44783799": "Exteriorization of trachea"}
-    severe_conditions_concept_ids = {"132797": "Sepsis"}
-    severe_observation_concept_ids = {"4148981": "Intensive care unit", "4046295": "Care of intensive care unit patient"}
+    severe_procedure_concept_ids = {
+        "4145647": "Assisted breathing", 
+        "40487536": "Intubation of respiratory tract", 
+        "4013354": "Insertion of endotracheal tube", 
+        "4230167": "Artificial respiration", 
+        "44783799": "Exteriorization of trachea",
+        "4052536": "Extracorporeal membrane oxygenation", 
+        "4302920": "Life support procedure",
+        "4060257": "Insertion of intra-aortic balloon counterpulsation",
+        "4337306": "Implantation of ventricular assist device",
+        "37018292": "Continuous renal replacement therapy"
+        }
+    severe_conditions_concept_ids = {
+        "132797": "Sepsis", 
+        "196236": "Septic shock",
+        "201965": "Shock",
+        "319049": "Acute respiratory failure",
+        "198571": "Cardiogenic shock"
+    }
+    severe_observation_concept_ids = {
+        "4148981": "Intensive care unit", 
+        "4046295": "Care of intensive care unit patient"
+    }
     severe_visit_concept_ids = {"32037": "Intensive Care"}
     # Load the severe events that we want to compare against. Severe events are defined from any of the following sources:
     # - Severe conditions (defined by severe_procedure_concept_ids)
@@ -175,23 +207,19 @@ def main(ancestry_filepath, db_name, days_threshold=7):
     # For each condition, create a binary column indicating whether the person had that condition within the specified time threshold of a severe event. 
     person_to_severe_condition_df = severe_conditions_df[["person_id", "condition"]].drop_duplicates()
     person_df = load_person_df(db_name)
+    all_severe_individuals = set(severe_events_from_conditions_df["person_id"]).union(set(severe_events_from_procedure_df["person_id"])).union(set(severe_events_from_observations_df["person_id"])).union(set(severe_events_from_visits_df["person_id"]))
     for condition in severe_conditions_df["condition"].unique():
         severe_condition_df = person_to_severe_condition_df.loc[severe_conditions_df["condition"] == condition, ["person_id"]]
         severe_condition_df[condition] = 1
         person_df = pandas.merge(person_df, severe_condition_df[["person_id", condition]], on="person_id", how="left")
-        person_df[condition] = person_df[condition].fillna(0)
+        person_df[condition] = [finalise_phenotype(iid, cond, all_severe_individuals) for (iid, cond) in zip(person_df["person_id"], person_df[condition])]
+        person_df[condition] = person_df[condition].astype('Int64')
+    person_df
 
     # Extract the first age of occurence of any severe condition (otherwise AGE would depend on the condition which would require different covariate datasets for each condition)
     print("Extracting age at occurrence for severe conditions.")
     severe_person_age_at_occurence = severe_conditions_df.groupby("person_id")["age_at_occurrence"].min().to_dict()
     person_df["AGE"] = [severe_person_age_at_occurence[pid] if pid in severe_person_age_at_occurence else age for pid, age in zip(person_df["person_id"], person_df["AGE"])]
-
-    # Remove severe individuals that do not have one of the desired conditions to avoid contamination of the control group
-    print("Removing severe individuals that do not have one of the desired conditions to avoid contamination of the control group.")
-    all_severe_individuals = set(severe_events_from_conditions_df["person_id"]).union(set(severe_events_from_procedure_df["person_id"])).union(set(severe_events_from_observations_df["person_id"])).union(set(severe_events_from_visits_df["person_id"]))
-    severe_individuals_with_conditions_of_interest = set(severe_conditions_df["person_id"])
-    severe_individuals_without_conditions_of_interest = all_severe_individuals - severe_individuals_with_conditions_of_interest
-    person_df = person_df[~person_df["person_id"].isin(severe_individuals_without_conditions_of_interest)]
 
     # Load and merge ancestries
     print("Loading and merging ancestries.")
